@@ -198,14 +198,16 @@ class Mailbox:
         raise NotImplementedError('Method must be implemented by subclass')
 
     def _string_to_bytes(self, message):
-        # If a message is not 7bit clean, we refuse to handle it since it
-        # likely came from reading invalid messages in text mode, and that way
-        # lies mojibake.
+        # If a message is not 7bit clean, we refuse to handle it since
+        # it likely came from reading invalid messages in text mode, and
+        # that way lies mojibake.
         try:
             return message.encode('ascii')
         except UnicodeError:
-            raise ValueError("String input must be ASCII-only; "
-                "use bytes or a Message instead")
+            raise ValueError(
+                "String input must be ASCII-only; "
+                "use bytes or a Message instead"
+            )
 
     # Whether each message must end in a newline
     _append_newline = False
@@ -226,8 +228,10 @@ class Mailbox:
                 target.write(linesep)
         elif isinstance(message, (str, bytes, io.StringIO)):
             if isinstance(message, io.StringIO):
-                warnings.warn("Use of StringIO input is deprecated, "
-                    "use BytesIO instead", DeprecationWarning, 3)
+                warnings.warn(
+                    "Use of StringIO input is deprecated, "
+                    "use BytesIO instead", DeprecationWarning, 3
+                )
                 message = message.getvalue()
             if isinstance(message, str):
                 message = self._string_to_bytes(message)
@@ -240,8 +244,10 @@ class Mailbox:
                 target.write(linesep)
         elif hasattr(message, 'read'):
             if hasattr(message, 'buffer'):
-                warnings.warn("Use of text mode files is deprecated, "
-                    "use a binary mode file instead", DeprecationWarning, 3)
+                warnings.warn(
+                    "Use of text mode files is deprecated, "
+                    "use a binary mode file instead", DeprecationWarning, 3
+                )
                 message = message.buffer
             lastline = None
             while True:
@@ -258,7 +264,8 @@ class Mailbox:
                 line = line.replace(b'\n', linesep)
                 target.write(line)
                 lastline = line
-            if self._append_newline and lastline and not lastline.endswith(linesep):
+            if self._append_newline and lastline and \
+                    not lastline.endswith(linesep):
                 # Make sure the message ends with a newline
                 target.write(linesep)
         else:
@@ -458,7 +465,7 @@ class Maildir(Mailbox):
         maildirfolder_path = path / 'maildirfolder'
         if not maildirfolder_path.exists():
             os.close(os.open(maildirfolder_path, os.O_CREAT | os.O_WRONLY,
-                0o666))
+                             0o666))
         return result
 
     def remove_folder(self, folder):
@@ -693,7 +700,7 @@ class _singlefileMailbox(Mailbox):
                 new_toc[key] = (new_start, new_file.tell())
                 self._post_message_hook(new_file)
             self._file_length = new_file.tell()
-        except:
+        except Exception:
             new_file.close()
             Path(new_file.name).unlink()
             raise
@@ -766,9 +773,9 @@ class _singlefileMailbox(Mailbox):
             self._file.truncate(before)
             raise
         self._file.flush()
-        self._file_length = self._file.tell()  # Record current length of mailbox
+        # Record current length of mailbox
+        self._file_length = self._file.tell()
         return offsets
-
 
 
 class _mboxMMDF(_singlefileMailbox):
@@ -829,7 +836,8 @@ class _mboxMMDF(_singlefileMailbox):
             if from_line is not None:
                 from_line = from_line.encode('ascii')
         if from_line is None:
-            from_line = b'From MAILER-DAEMON ' + time.asctime(time.gmtime()).encode()
+            from_line = b'From MAILER-DAEMON ' + time.asctime(time.gmtime()) \
+                                                 .encode()
         start = self._file.tell()
         self._file.write(from_line + linesep)
         self._dump_message(message, self._file, self._mangle_from_)
@@ -1160,8 +1168,8 @@ class MH(Mailbox):
                         else:
                             start, stop = (int(x) for x in spec.split('-'))
                             keys.update(range(start, stop + 1))
-                    results[name] = [key for key in sorted(keys) \
-                                         if key in all_keys]
+                    results[name] = [key for key in sorted(keys)
+                                     if key in all_keys]
                     if len(results[name]) == 0:
                         del results[name]
                 except ValueError:
@@ -1345,8 +1353,8 @@ class Babyl(_singlefileMailbox):
                     stops.append(line_pos - len(linesep))
                 starts.append(next_pos)
                 labels = [label.strip() for label
-                                        in self._file.readline()[1:].split(b',')
-                                        if label.strip()]
+                          in self._file.readline()[1:].split(b',')
+                          if label.strip()]
                 label_lists.append(labels)
             elif line == b'\037' or line == b'\037' + linesep:
                 if len(stops) < len(starts):
@@ -1400,7 +1408,8 @@ class Babyl(_singlefileMailbox):
             self._file.write(b'1,,' + linesep)
         if isinstance(message, email.message.Message):
             orig_buffer = io.BytesIO()
-            orig_generator = email.generator.BytesGenerator(orig_buffer, False, 0)
+            orig_generator = email.generator.BytesGenerator(orig_buffer,
+                                                            False, 0)
             orig_generator.flatten(message)
             orig_buffer.seek(0)
             while True:
@@ -1411,7 +1420,8 @@ class Babyl(_singlefileMailbox):
             self._file.write(b'*** EOOH ***' + linesep)
             if isinstance(message, BabylMessage):
                 vis_buffer = io.BytesIO()
-                vis_generator = email.generator.BytesGenerator(vis_buffer, False, 0)
+                vis_generator = email.generator.BytesGenerator(vis_buffer,
+                                                               False, 0)
                 vis_generator.flatten(message.get_visible())
                 while True:
                     line = vis_buffer.readline()
@@ -1426,14 +1436,16 @@ class Babyl(_singlefileMailbox):
                     if line == b'\n' or not line:
                         break
             while True:
-                buffer = orig_buffer.read(4096) # Buffer size is arbitrary.
+                buffer = orig_buffer.read(4096)  # Buffer size is arbitrary.
                 if not buffer:
                     break
                 self._file.write(buffer.replace(b'\n', linesep))
         elif isinstance(message, (bytes, str, io.StringIO)):
             if isinstance(message, io.StringIO):
-                warnings.warn("Use of StringIO input is deprecated, "
-                    "use BytesIO instead", DeprecationWarning, 3)
+                warnings.warn(
+                    "Use of StringIO input is deprecated, "
+                    "use BytesIO instead", DeprecationWarning, 3
+                )
                 message = message.getvalue()
             if isinstance(message, str):
                 message = self._string_to_bytes(message)
@@ -1448,8 +1460,10 @@ class Babyl(_singlefileMailbox):
                 self._file.write(message.replace(b'\n', linesep))
         elif hasattr(message, 'readline'):
             if hasattr(message, 'buffer'):
-                warnings.warn("Use of text mode files is deprecated, "
-                    "use a binary mode file instead", DeprecationWarning, 3)
+                warnings.warn(
+                    "Use of text mode files is deprecated, "
+                    "use a binary mode file instead", DeprecationWarning, 3
+                )
                 message = message.buffer
             original_pos = message.tell()
             first_pass = True
@@ -1711,8 +1725,9 @@ class _mboxMMDFMessage(Message):
             del message['x-status']
             maybe_date = ' '.join(self.get_from().split()[-5:])
             try:
-                message.set_date(calendar.timegm(time.strptime(maybe_date,
-                                                      '%a %b %d %H:%M:%S %Y')))
+                message.set_date(calendar.timegm(
+                    time.strptime(maybe_date, '%a %b %d %H:%M:%S %Y')
+                ))
             except (ValueError, OverflowError):
                 pass
         elif isinstance(message, _mboxMMDFMessage):
@@ -1770,7 +1785,7 @@ class MHMessage(Message):
     def add_sequence(self, sequence):
         """Add sequence to list of sequences including the message."""
         if isinstance(sequence, str):
-            if not sequence in self._sequences:
+            if sequence not in self._sequences:
                 self._sequences.append(sequence)
         else:
             raise TypeError('sequence type must be str: %s' % type(sequence))
@@ -2095,12 +2110,13 @@ def _lock_file(f, dotlock=True):
                 Path(pre_lock.name).unlink()
                 raise ExternalClashError('dot lock unavailable: %s' %
                                          f.name)
-    except:
+    except Exception:
         if fcntl:
             fcntl.lockf(f, fcntl.LOCK_UN)
         if dotlock_done:
             Path(f.name + '.lock').unlink()
         raise
+
 
 def _unlock_file(f):
     """Unlock file f using lockf and dot locking."""
@@ -2118,17 +2134,20 @@ def _create_carefully(path):
     finally:
         os.close(fd)
 
+
 def _create_temporary(path):
     """Create a temp file based on path and open for reading and writing."""
     return _create_carefully('%s.%s.%s.%s' % (path, int(time.time()),
                                               socket.gethostname(),
                                               os.getpid()))
 
+
 def _sync_flush(f):
     """Ensure changes to file f are physically on disk."""
     f.flush()
     if hasattr(os, 'fsync'):
         os.fsync(f.fileno())
+
 
 def _sync_close(f):
     """Close file f, ensuring all changes are physically on disk."""
@@ -2139,14 +2158,18 @@ def _sync_close(f):
 class Error(Exception):
     """Raised for module-specific errors."""
 
+
 class NoSuchMailboxError(Error):
     """The specified mailbox does not exist and won't be created."""
+
 
 class NotEmptyError(Error):
     """The specified mailbox is not empty and deletion was requested."""
 
+
 class ExternalClashError(Error):
     """Another process caused an action to fail."""
+
 
 class FormatError(Error):
     """A file appears to have an invalid format."""
